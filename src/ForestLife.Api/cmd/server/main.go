@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/itsjoetree/forest-life/db"
+	"github.com/itsjoetree/forest-life/router"
+	"github.com/itsjoetree/forest-life/services"
 	"github.com/joho/godotenv"
 )
 
@@ -16,6 +18,7 @@ type Config struct {
 
 type Application struct {
 	Config Config
+	Models services.Models
 }
 
 func (app *Application) Serve() error {
@@ -28,7 +31,8 @@ func (app *Application) Serve() error {
 	fmt.Println("API is listening on port", port)
 
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: router.Routes(),
 	}
 
 	return srv.ListenAndServe()
@@ -54,6 +58,7 @@ func main() {
 
 	app := &Application{
 		Config: cfg,
+		Models: services.New(dbConn.DB),
 	}
 
 	err = app.Serve()

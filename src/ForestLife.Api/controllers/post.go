@@ -29,7 +29,7 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 	helpers.WriteJSON(w, http.StatusOK, helpers.Envelope{"posts": posts})
 }
 
-// POST/posts/post
+// POST/posts
 func CreatePost(w http.ResponseWriter, r *http.Request) {
 	var newPost services.Post
 	err := json.NewDecoder(r.Body).Decode(&newPost)
