@@ -14,7 +14,8 @@ type Post struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (p *Post) GetPostsByAuthorID(authorId string) ([]*Post, error) {
+// TODO: Research how to properly handle query params in services
+func (p *Post) GetPosts(authorId string) ([]*Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
