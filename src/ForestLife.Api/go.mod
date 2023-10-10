@@ -11,6 +11,8 @@ require (
 )
 
 require (
+	github.com/go-chi/chi v1.5.5
+	github.com/go-chi/cors v1.2.1
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
