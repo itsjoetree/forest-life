@@ -54,6 +54,35 @@ func (p *Post) GetPosts(authorId string) ([]*Post, error) {
 	return posts, nil
 }
 
+func (p *Post) GetPostById(id string) (*Post, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		SELECT id, text, image, author_id, created_at, updated_at
+		FROM posts
+		WHERE id = $1
+	`
+
+	row := db.QueryRowContext(ctx, query, id)
+
+	var post Post
+	err := row.Scan(
+		&post.ID,
+		&post.Text,
+		&post.Image,
+		&post.AuthorID,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &post, nil
+}
+
 func (p *Post) CreatePost(post Post) (*Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
@@ -79,4 +108,49 @@ func (p *Post) CreatePost(post Post) (*Post, error) {
 	}
 
 	return &post, nil
+}
+
+func (p *Post) UpdatePost(id string, body Post) (*Post, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		UPDATE posts
+		SET text = $1, image = $2, updated_at = $3
+		WHERE id = $4
+		returning *
+	`
+
+	_, err := db.ExecContext(
+		ctx,
+		query,
+		body.Text,
+		body.Image,
+		time.Now(),
+		id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &body, nil
+}
+
+func (p *Post) DeletePost(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		DELETE FROM posts
+		WHERE id = $1
+	`
+
+	_, err := db.ExecContext(ctx, query, id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -23,7 +23,10 @@ func Routes() http.Handler {
 	}))
 
 	router.Get("/api/v1/posts", controllers.GetPosts)
+	router.Get("/api/v1/posts/{id}", controllers.GetPostById)
 	router.Post("/api/v1/posts", controllers.CreatePost)
+	router.Put("/api/v1/posts/{id}", controllers.UpdatePost)
+	router.Delete("/api/v1/posts/{id}", controllers.DeletePost)
 
 	return router
 }
