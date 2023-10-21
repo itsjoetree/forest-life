@@ -1,0 +1,10 @@
+-- Add down migration script here
+BEGIN;
+
+DROP TABLE IF EXISTS profiles;
+ALTER TABLE IF EXISTS users
+ADD COLUMN username    VARCHAR(255)  NOT NULL UNIQUE,
+ADD COLUMN name        VARCHAR(255)  NOT NULL,
+ADD COLUMN email       VARCHAR(255)  NOT NULL UNIQUE;
+
+COMMIT;
