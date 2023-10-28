@@ -22,6 +22,7 @@ func Routes() http.Handler {
 		MaxAge:           300,
 	}))
 
+	router.Get("/api/v1/profile", controllers.GetProfile)
 	router.Get("/api/v1/posts", controllers.GetPosts)
 	router.Get("/api/v1/posts/{id}", controllers.GetPostById)
 	router.Post("/api/v1/posts", controllers.CreatePost)
