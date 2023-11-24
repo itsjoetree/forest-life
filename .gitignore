@@ -1,2 +1,4 @@
 .DS_Store
 .env
+.idea
+src/ForestLife.Api/forest_life_api
