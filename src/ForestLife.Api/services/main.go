@@ -7,7 +7,7 @@ import (
 
 var db *sql.DB
 
-const dbTimeout = time.Second * 3
+const dbTimeout = time.Second * 45
 
 type Models struct {
 	Post         Post

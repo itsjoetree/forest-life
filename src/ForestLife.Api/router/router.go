@@ -1,12 +1,11 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/itsjoetree/forest-life/controllers"
+	"net/http"
 )
 
 func Routes() http.Handler {
@@ -21,6 +20,11 @@ func Routes() http.Handler {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+
+	router.Post("/api/v1/auth/login", controllers.SignIn)
+	router.Post("/api/v1/auth/register", controllers.SignUp)
+	router.Post("/api/v1/auth/refresh", controllers.Refresh)
+	router.Post("/api/v1/auth/logout", controllers.Logout)
 
 	router.Get("/api/v1/profile", controllers.GetProfile)
 	router.Get("/api/v1/posts", controllers.GetPosts)

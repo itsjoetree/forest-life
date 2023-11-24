@@ -1,6 +1,9 @@
 package services
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type ProfileTheme string
 
@@ -11,11 +14,14 @@ const (
 )
 
 type Profile struct {
-	ID       string       `json:"id"`
-	Username string       `json:"username"`
-	Nickname string       `json:"nickname"`
-	Email    string       `json:"email"`
-	Theme    ProfileTheme `json:"theme"`
+	ID        string       `json:"id"`
+	Username  string       `json:"username"`
+	Nickname  string       `json:"nickname"`
+	Email     string       `json:"email"`
+	Theme     ProfileTheme `json:"theme"`
+	Password  string       `json:"password,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
 }
 
 func (p *Profile) GetProfileByUserId(userId string) (*Profile, error) {
