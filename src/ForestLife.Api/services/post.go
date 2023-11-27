@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var auth Auth
 
 type Post struct {
 	ID        string    `json:"id"`
@@ -14,7 +17,46 @@ type Post struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// TODO: Research how to properly handle query params in services
+func (p *Post) LikePost(postId string, sessionId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	userId, err := auth.GetUserId(ctx, sessionId)
+
+	query := `
+		INSERT INTO post_likes (post_id, user_id)
+		VALUES ($1, $2)
+	`
+
+	_, err = db.ExecContext(ctx, query, postId, userId)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Post) UnlikePost(postId string, sessionId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	userId, err := auth.GetUserId(ctx, sessionId)
+
+	query := `
+		DELETE FROM post_likes
+		WHERE post_id = $1 AND user_id = $2
+	`
+
+	_, err = db.ExecContext(ctx, query, postId, userId)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (p *Post) GetPosts(authorId string) ([]*Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
@@ -83,9 +125,17 @@ func (p *Post) GetPostById(id string) (*Post, error) {
 	return &post, nil
 }
 
-func (p *Post) CreatePost(post Post) (*Post, error) {
+func (p *Post) CreatePost(post Post, sessionId string) (*Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
+
+	userId, err := auth.GetUserId(ctx, sessionId)
+
+	if err != nil {
+		return nil, errors.New("unauthorized")
+	}
+
+	post.AuthorID = userId
 
 	query := `
 		INSERT INTO posts (text, image, author_id, created_at, updated_at)
@@ -93,12 +143,12 @@ func (p *Post) CreatePost(post Post) (*Post, error) {
 		returning *
 	`
 
-	_, err := db.ExecContext(
+	_, err = db.ExecContext(
 		ctx,
 		query,
 		post.Text,
 		post.Image,
-		post.AuthorID,
+		userId,
 		time.Now(),
 		time.Now(),
 	)
@@ -110,24 +160,31 @@ func (p *Post) CreatePost(post Post) (*Post, error) {
 	return &post, nil
 }
 
-func (p *Post) UpdatePost(id string, body Post) (*Post, error) {
+func (p *Post) UpdatePost(id string, body Post, sessionId string) (*Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
+
+	userId, err := auth.GetUserId(ctx, sessionId)
+
+	if err != nil {
+		return nil, errors.New("unauthorized")
+	}
 
 	query := `
 		UPDATE posts
 		SET text = $1, image = $2, updated_at = $3
-		WHERE id = $4
+		WHERE id = $4 AND author_id = $5
 		returning *
 	`
 
-	_, err := db.ExecContext(
+	_, err = db.ExecContext(
 		ctx,
 		query,
 		body.Text,
 		body.Image,
 		time.Now(),
 		id,
+		userId,
 	)
 
 	if err != nil {
@@ -137,16 +194,22 @@ func (p *Post) UpdatePost(id string, body Post) (*Post, error) {
 	return &body, nil
 }
 
-func (p *Post) DeletePost(id string) error {
+func (p *Post) DeletePost(id string, sessionId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
+	userId, err := auth.GetUserId(ctx, sessionId)
+
+	if err != nil {
+		return errors.New("unauthorized")
+	}
+
 	query := `
 		DELETE FROM posts
-		WHERE id = $1
+		WHERE id = $1 AND author_id = $2
 	`
 
-	_, err := db.ExecContext(ctx, query, id)
+	_, err = db.ExecContext(ctx, query, id, userId)
 
 	if err != nil {
 		return err

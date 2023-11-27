@@ -27,6 +27,8 @@ func Routes() http.Handler {
 	router.Post("/api/v1/auth/logout", controllers.Logout)
 
 	router.Get("/api/v1/profile", controllers.GetProfile)
+	router.Post("/api/v1/posts/{id}/unlike", controllers.UnlikePost)
+	router.Post("/api/v1/posts/{id}/like", controllers.LikePost)
 	router.Get("/api/v1/posts", controllers.GetPosts)
 	router.Get("/api/v1/posts/{id}", controllers.GetPostById)
 	router.Post("/api/v1/posts", controllers.CreatePost)
