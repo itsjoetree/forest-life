@@ -21,12 +21,18 @@ func Routes() http.Handler {
 		MaxAge:           300,
 	}))
 
+	router.Post("/api/v1/users/{id}/follow", controllers.Follow)
+	router.Post("/api/v1/users/{id}/unfollow", controllers.Unfollow)
+
 	router.Post("/api/v1/auth/login", controllers.SignIn)
 	router.Post("/api/v1/auth/register", controllers.SignUp)
 	router.Post("/api/v1/auth/refresh", controllers.Refresh)
 	router.Post("/api/v1/auth/logout", controllers.Logout)
 
 	router.Get("/api/v1/profile", controllers.GetProfile)
+
+	router.Post("/api/v1/posts/{id}/unlike", controllers.UnlikePost)
+	router.Post("/api/v1/posts/{id}/like", controllers.LikePost)
 	router.Get("/api/v1/posts", controllers.GetPosts)
 	router.Get("/api/v1/posts/{id}", controllers.GetPostById)
 	router.Post("/api/v1/posts", controllers.CreatePost)

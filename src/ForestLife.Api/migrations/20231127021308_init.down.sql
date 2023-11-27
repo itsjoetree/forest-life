@@ -1,0 +1,5 @@
+ALTER TABLE IF EXISTS follow_relationships
+DROP CONSTRAINT fk_follow_relationships_followee_id;
+
+ALTER TABLE IF EXISTS follow_relationships
+DROP CONSTRAINT fk_follow_relationships_follower_id;

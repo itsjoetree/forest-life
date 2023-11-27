@@ -3,10 +3,11 @@ package services
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Auth struct {
@@ -35,17 +36,17 @@ func (s Session) isExpired() bool {
 	return s.Expiry.Before(time.Now())
 }
 
-func HashPassword(password string) (string, error) {
+func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
 }
 
-func CheckPasswordHash(password, hash string) bool {
+func checkPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
 
-func CreateSession(ctx context.Context, username string) (string, time.Time, error) {
+func createSession(ctx context.Context, username string) (string, time.Time, error) {
 	// Create new session token
 	sessionToken := uuid.NewString()
 	expiresAt := time.Now().Add(168 * time.Hour)
@@ -62,7 +63,7 @@ func CreateSession(ctx context.Context, username string) (string, time.Time, err
 	row.Scan(&existingSessionId)
 
 	if existingSessionId != "" {
-		err := DeleteSession(ctx, existingSessionId)
+		err := deleteSession(ctx, existingSessionId)
 
 		if err != nil {
 			return "", expiresAt, err
@@ -82,7 +83,7 @@ func CreateSession(ctx context.Context, username string) (string, time.Time, err
 	return sessionToken, expiresAt, err
 }
 
-func DeleteSession(ctx context.Context, sessionToken string) error {
+func deleteSession(ctx context.Context, sessionToken string) error {
 	deleteQuery := `
 	  DELETE FROM sessions
 	  WHERE id = $1
@@ -95,6 +96,54 @@ func DeleteSession(ctx context.Context, sessionToken string) error {
 	}
 
 	return nil
+}
+
+func (a *Auth) GetUserId(ctx context.Context, sessionId string) (string, error) {
+	var username string
+
+	userQuery := `
+		SELECT username
+		FROM sessions
+		WHERE id = $1
+	`
+
+	row := db.QueryRowContext(ctx, userQuery, sessionId)
+	err := row.Scan(&username)
+
+	if err != nil {
+		return "", errors.New("serverError")
+	}
+
+	profileQuery := `
+		SELECT users.id
+		FROM users
+		INNER JOIN profiles ON users.profile_id = profiles.id
+		WHERE profiles.username = $1
+	`
+
+	var userId string
+	row = db.QueryRowContext(ctx, profileQuery, username)
+	err = row.Scan(&userId)
+
+	if err != nil {
+		return "", errors.New("serverError")
+	}
+
+	return userId, nil
+}
+
+func (a *Auth) GetSessionId(r *http.Request) (string, error) {
+	c, err := r.Cookie("session_token")
+
+	if err != nil {
+		if err == http.ErrNoCookie {
+			return "", errors.New("unauthorized")
+		}
+
+		return "", errors.New("bad request")
+	}
+
+	return c.Value, nil
 }
 
 func (a *Auth) SignUp(profile Auth) (*http.Cookie, int, error) {
@@ -136,7 +185,7 @@ func (a *Auth) SignUp(profile Auth) (*http.Cookie, int, error) {
 		VALUES ($1, $2, $3, $4)
 	`
 
-	hash, err := HashPassword(profile.Password)
+	hash, err := hashPassword(profile.Password)
 
 	if err != nil {
 		return &cookie, http.StatusInternalServerError, errors.New("serverError")
@@ -155,12 +204,13 @@ func (a *Auth) SignUp(profile Auth) (*http.Cookie, int, error) {
 		return &cookie, 0, err
 	}
 
-	sessionToken, expiresAt, err := CreateSession(ctx, profile.Username)
+	sessionToken, expiresAt, err := createSession(ctx, profile.Username)
 
 	cookie = http.Cookie{
 		Name:    "session_token",
 		Value:   sessionToken,
 		Expires: expiresAt,
+		Path:    "/",
 	}
 
 	err = tx.Commit()
@@ -193,16 +243,17 @@ func (a *Auth) SignIn(creds Credentials) (*http.Cookie, int, error) {
 		return &cookie, http.StatusBadRequest, errors.New("serverError")
 	}
 
-	if !CheckPasswordHash(creds.Password, storedHash) {
+	if !checkPasswordHash(creds.Password, storedHash) {
 		return &cookie, http.StatusUnauthorized, errors.New("invalidPassword")
 	}
 
-	sessionToken, expiresAt, err := CreateSession(ctx, creds.Username)
+	sessionToken, expiresAt, err := createSession(ctx, creds.Username)
 
 	cookie = http.Cookie{
 		Name:    "session_token",
 		Value:   sessionToken,
 		Expires: expiresAt,
+		Path:    "/",
 	}
 
 	if err != nil {
@@ -231,17 +282,18 @@ func (a *Auth) Refresh(sessionToken string) (*http.Cookie, int, error) {
 		return &cookie, http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	err = DeleteSession(ctx, sessionToken)
+	err = deleteSession(ctx, sessionToken)
 
 	if err != nil {
 		// no-op
 	}
 
-	sessionToken, expiresAt, err := CreateSession(ctx, userSession.Username)
+	sessionToken, expiresAt, err := createSession(ctx, userSession.Username)
 	cookie = http.Cookie{
 		Name:    "session_token",
 		Value:   sessionToken,
 		Expires: expiresAt,
+		Path:    "/",
 	}
 
 	if err != nil {
@@ -256,7 +308,7 @@ func (a *Auth) Logout(sessionToken string) (*http.Cookie, int, error) {
 	defer cancel()
 	var cookie http.Cookie
 
-	err := DeleteSession(ctx, sessionToken)
+	err := deleteSession(ctx, sessionToken)
 
 	if err != nil {
 		return &cookie, http.StatusNotFound, errors.New("notFound")
@@ -266,6 +318,7 @@ func (a *Auth) Logout(sessionToken string) (*http.Cookie, int, error) {
 		Name:    "session_token",
 		Value:   "",
 		Expires: time.Now(),
+		Path:    "/",
 	}
 
 	return &cookie, 0, nil
